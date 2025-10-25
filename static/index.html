@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Company RAG — Gemini-like Chat</title>
+  <style>
+    /* Gemini-like light theme */
+    :root {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --muted: #6b7280;
+      --text: #0f172a;
+      --accent: #0f62fe;
+      --accent-2: #2563eb;
+      --input-h: 96px;
+      --scroll-w: 12px;
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      height: 100vh;
+      gap: 20px;
+      padding: 24px;
+      align-items: stretch
+    }
+
+    /* Sidebar */
+    .sidebar {
+      background: var(--panel);
+      border-radius: 12px;
+      padding: 16px;
+      border: 1px solid rgba(15, 23, 42, 0.04);
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.03);
+      display: flex;
+      flex-direction: column;
+      gap: 12px
+    }
+
+    .brand {
+      display: flex;
+      gap: 12px;
+      align-items: center
+    }
+
+    .logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 700
+    }
+
+    .sidebar h3 {
+      margin: 0;
+      font-size: 1.05rem
+    }
+
+    .btn {
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      box-shadow: 0 6px 12px rgba(37, 99, 235, 0.08)
+    }
+
+    /* Conversations */
+    .conversations {
+      flex: 1;
+      overflow: auto;
+      padding-top: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px
+    }
+
+    .conv {
+      padding: 8px;
+      border-radius: 10px;
+      background: transparent;
+      border: 1px solid rgba(15, 23, 42, 0.03);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .conv.active {
+      background: rgba(15, 23, 42, 0.02)
+    }
+
+    /* Panel (main) - flex column */
+    .panel {
+      display: flex;
+      flex-direction: column;
+      border-radius: 12px;
+      background: var(--panel);
+      border: 1px solid rgba(15, 23, 42, 0.04);
+      box-shadow: 0 8px 28px rgba(15, 23, 42, 0.03);
+      overflow: hidden
+    }
+
+    /* Header */
+    .panel-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.03);
+      display: flex;
+      align-items: center;
+      justify-content: space-between
+    }
+
+    /* Messages area: flexible, scrollable, contains custom scrollbar overlay */
+    .messages {
+      flex: 1 1 auto;
+      min-height: 0;
+      position: relative;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      align-content: flex-start;
+      overflow: auto;
+      scrollbar-width: none
+    }
+
+    /* hide default WebKit scrollbar (we will show custom one) but keep accessible */
+    .messages::-webkit-scrollbar {
+      width: var(--scroll-w);
+      background: transparent
+    }
+
+    .messages::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.08);
+      border-radius: 10px
+    }
+
+    /* Custom scrollbar overlay (always visible) */
+    .custom-scrollbar {
+      position: absolute;
+      top: 12px;
+      right: 10px;
+      bottom: calc(var(--input-h) + 12px);
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.03);
+      pointer-events: none;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center
+    }
+
+    .custom-scrollbar .thumb {
+      width: 100%;
+      background: linear-gradient(180deg, var(--accent), var(--accent-2));
+      border-radius: 10px;
+      pointer-events: none;
+      transition: background .12s
+    }
+
+    /* Input bar */
+    .input-bar {
+      height: var(--input-h);
+      padding: 10px 14px;
+      border-top: 1px solid rgba(15, 23, 42, 0.03);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #fafafa
+    }
+
+    .input {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      padding: 6px;
+      border-radius: 12px;
+      background: #fff;
+      border: 1px solid rgba(15, 23, 42, 0.06)
+    }
+
+    .input textarea {
+      width: 100%;
+      height: calc(var(--input-h) - 26px);
+      resize: vertical;
+      border: 0;
+      background: transparent;
+      outline: none;
+      padding: 6px;
+      font-size: 15px;
+      color: var(--text)
+    }
+
+    .send-btn {
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      border-radius: 10px;
+      padding: 8px 12px;
+      color: #fff;
+      border: none;
+      cursor: pointer
+    }
+
+    /* Avatar and messages */
+    .msg {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      max-width: 88%
+    }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+    }
+
+    .bubble {
+      padding: 10px 14px;
+      border-radius: 14px;
+      line-height: 1.35;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04)
+    }
+
+    .msg.user {
+      flex-direction: row-reverse
+    }
+
+    .msg.user .bubble {
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      color: #fff;
+      border-radius: 16px 16px 6px 16px
+    }
+
+    .msg.ai .bubble {
+      background: #f3f4f6;
+      color: var(--text);
+      border-radius: 16px 16px 16px 6px;
+      border: 1px solid rgba(15, 23, 42, 0.03)
+    }
+
+    /* Typing dots */
+    .typing {
+      display: flex;
+      gap: 6px;
+      align-items: center
+    }
+
+    .typing .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.15);
+      animation: blink 1.2s infinite
+    }
+
+    @keyframes blink {
+      0% {
+        opacity: .2
+      }
+
+      50% {
+        opacity: 1
+      }
+
+      100% {
+        opacity: .2
+      }
+    }
+
+    /* Modal basic */
+    .modal-bg {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.55);
+      z-index: 60;
+      align-items: center;
+      justify-content: center
+    }
+
+    .modal {
+      width: 480px;
+      background: var(--panel);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08)
+    }
+
+    /* Responsive */
+    @media (max-width:900px) {
+      .app {
+        grid-template-columns: 1fr;
+        padding: 12px
+      }
+
+      .sidebar {
+        display: none
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">RAG</div>
+        <div>
+          <h3>Company RAG</h3>
+        </div>
+      </div>
+
+      <button class="btn" id="new-chat">+ New Chat</button>
+
+      <div class="conversations" id="conversations">
+        <div class="conv active">
+          <div class="title">General</div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <small style="color:var(--muted)">Docs: <span id="docs-count">0</span></small>
+        <button class="btn" id="open-ingest">Ingest</button>
+      </div>
+    </aside>
+
+    <main class="panel">
+      <div class="panel-header">
+        <div>
+          <h2 id="chat-title" style="margin:0">General</h2>
+          <div style="font-size:0.9rem;color:var(--muted)">Offline • Local models</div>
+        </div>
+        <div>
+          <button id="reload-llm" class="icon-btn" title="Reload">⟳</button>
+        </div>
+      </div>
+
+      <div class="messages" id="messages" aria-live="polite" aria-label="Chat messages">
+        <!-- custom scrollbar -->
+        <div class="custom-scrollbar" id="custom-scrollbar">
+          <div class="thumb" id="custom-thumb"></div>
+        </div>
+      </div>
+
+      <div class="input-bar">
+        <div class="input" id="input-container">
+          <textarea id="prompt" placeholder="Ask something (Shift+Enter for newline)" spellcheck="true"></textarea>
+        </div>
+        <button id="send" class="send-btn">Send</button>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-bg" id="modal-bg" role="dialog" aria-modal="true">
+    <div class="modal" role="document">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <h3 style="margin:0">Document Ingestion</h3>
+        <button id="close-ingest" class="send-btn"
+          style="background:linear-gradient(90deg,var(--accent),var(--accent-2));padding:6px 10px">✕</button>
+      </div>
+      <div id="dropzone" style="border:1px dashed rgba(15,23,42,0.06);padding:12px;border-radius:8px;cursor:pointer">
+        <strong>Drop PDF or TXT here</strong>
+        <div style="color:var(--muted)">Or click to choose a file</div>
+        <div style="text-align:right;margin-top:8px">
+          <span id="selected-name" style="color:var(--muted)">No file</span>
+        </div>
+      </div>
+
+      <!-- file meta (size / status) referenced by JS -->
+      <div class="file-meta" id="file-meta" style="display:none;margin-top:8px;align-items:center;gap:8px">
+        <span id="file-size" style="color:var(--muted)"></span>
+        <span id="upload-status" style="margin-left:auto;color:var(--muted)"></span>
+      </div>
+
+      <input type="file" id="file-input" accept=".pdf,.txt" style="display:none" multiple />
+      <div style="display:flex;justify-content:flex-end;margin-top:12px">
+        <button id="start-upload" class="btn">Upload</button>
+      </div>
+      <div id="upload-result" style="margin-top:8px;color:var(--muted)"></div>
+    </div>
+  </div>
+
+  <script>
+    /* filepath: c:\vijay\work\code\AI\RAGs\RAG\static\index.html */
+    /* Minimal chat logic with custom scrollbar that always displays */
+    document.addEventListener('DOMContentLoaded', () => {
+      // --- DOM refs ---
+      const messagesEl = document.getElementById('messages');
+      const promptEl = document.getElementById('prompt');
+      const sendBtn = document.getElementById('send');
+      const convsEl = document.getElementById('conversations');
+      const newChatBtn = document.getElementById('new-chat');
+      const openIngest = document.getElementById('open-ingest');
+      const modalBg = document.getElementById('modal-bg');
+      const closeIngest = document.getElementById('close-ingest');
+      const dropzone = document.getElementById('dropzone');
+      const fileInput = document.getElementById('file-input');
+      const selectedName = document.getElementById('selected-name');
+      const fileMeta = document.getElementById('file-meta');
+      const fileSizeEl = document.getElementById('file-size');
+      const uploadResult = document.getElementById('upload-result');
+      const startUpload = document.getElementById('start-upload');
+      // store selected FileList (or array)
+      let selectedFiles = [];
+
+      const customScrollbar = document.getElementById('custom-scrollbar');
+      const customThumb = document.getElementById('custom-thumb');
+
+      const chats = {};
+      let activeChatId = null;
+      let chatCounter = 0;
+
+      function formatTime() { return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+      function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+      function updateCustomScrollbar() {
+        const el = messagesEl;
+        const contentH = el.scrollHeight;
+        const viewH = el.clientHeight;
+        const trackH = customScrollbar.clientHeight;
+        if (contentH <= viewH) { // fill full height when not scrollable
+          customThumb.style.height = trackH + 'px';
+          customThumb.style.transform = 'translateY(0px)';
+          customScrollbar.style.opacity = '0.6';
+          return;
+        }
+        const thumbH = Math.max(Math.round((viewH / contentH) * trackH), 24);
+        const maxTop = trackH - thumbH;
+        const ratio = el.scrollTop / (contentH - viewH);
+        const top = Math.round(ratio * maxTop);
+        customThumb.style.height = thumbH + 'px';
+        customThumb.style.transform = `translateY(${top}px)`;
+        customScrollbar.style.opacity = '1';
+      }
+
+      // wire native scroll to update custom thumb
+      messagesEl.addEventListener('scroll', () => { updateCustomScrollbar(); });
+
+      // ensure custom scrollbar responds to resize
+      window.addEventListener('resize', () => { updateCustomScrollbar(); });
+
+      // helper: create message DOM
+      function renderMessageDOM(msg) {
+        const row = document.createElement('div'); row.className = 'msg ' + (msg.role === 'user' ? 'user' : 'ai');
+        const av = document.createElement('div'); av.className = 'avatar';
+        // emoji: 👶 for human, 🤖 for AI
+        av.textContent = msg.role === 'user' ? '👶' : '🤖';
+
+        const inner = document.createElement('div');
+        const bubble = document.createElement('div'); bubble.className = 'bubble';
+
+        // msg.text is already escaped by esc() when stored.
+        // Convert plaintext newlines into HTML paragraphs and <br> so text displays as paragraphs.
+        (function formatAndSetHtml(escapedText, targetEl) {
+          if (!escapedText) { targetEl.innerHTML = ''; return; }
+          // normalize newlines
+          const normalized = escapedText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+          // split into paragraphs on double-newline
+          const parts = normalized.split(/\n\s*\n/);
+          const html = parts.map(p => {
+            // convert single newlines to <br> within a paragraph
+            const withBreaks = p.replace(/\n/g, '<br>');
+            return `<p style="margin:0 0.5em 0.6em 0">${withBreaks}</p>`;
+          }).join('');
+          targetEl.innerHTML = html;
+        })(msg.text, bubble);
+
+        const meta = document.createElement('div'); meta.style.marginTop = '6px'; meta.style.fontSize = '12px'; meta.style.color = 'var(--muted)'; meta.textContent = msg.time || formatTime();
+        inner.appendChild(bubble); inner.appendChild(meta);
+        row.appendChild(av); row.appendChild(inner);
+        messagesEl.appendChild(row);
+        // scroll and update scrollbar
+        requestAnimationFrame(() => { messagesEl.scrollTop = messagesEl.scrollHeight; updateCustomScrollbar(); });
+      }
+
+      function appendMessage(role, text) {
+        if (activeChatId === null) createInitialChat();
+        const msg = { role, text: esc(text), time: formatTime() };
+        chats[activeChatId].push(msg);
+        renderMessageDOM(msg);
+      }
+
+      // render full chat
+      function renderChat(id) {
+        messagesEl.querySelectorAll('.msg').forEach(n => n.remove());
+        const list = chats[id] || [];
+        for (const m of list) renderMessageDOM(m);
+        updateCustomScrollbar();
+      }
+
+      function createInitialChat() {
+        const id = String(chatCounter++);
+        const div = document.createElement('div'); div.className = 'conv'; div.dataset.id = id; div.innerHTML = `<div class="title">General</div>`;
+        convsEl.prepend(div);
+        chats[id] = [];
+        setActiveConversationElement(div, true);
+        enableRename(div);
+      }
+
+      function enableRename(convEl) {
+        const titleEl = convEl.querySelector('.title');
+        if (!titleEl || titleEl.dataset.renameAttached === '1') return;
+        titleEl.dataset.renameAttached = '1';
+        titleEl.addEventListener('dblclick', () => {
+          const old = titleEl.textContent || 'Chat';
+          const input = document.createElement('input'); input.type = 'text'; input.value = old; input.style.width = '100%';
+          titleEl.replaceWith(input); input.focus(); input.select();
+          const finish = (commit = true) => {
+            const newName = commit && input.value.trim() ? input.value.trim() : old;
+            const el = document.createElement('div'); el.className = 'title'; el.textContent = newName;
+            input.replaceWith(el); enableRename(convEl);
+            if (convEl.classList.contains('active')) document.getElementById('chat-title').textContent = newName;
+          };
+          input.addEventListener('blur', () => finish(true));
+          input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); finish(true); } if (e.key === 'Escape') { e.preventDefault(); finish(false); } });
+        });
+      }
+
+      function setActiveConversationElement(el, showGreeting = false) {
+        Array.from(convsEl.children).forEach(c => c.classList.remove('active'));
+        if (!el) return;
+        el.classList.add('active'); activeChatId = el.dataset.id;
+        const title = el.querySelector('.title')?.textContent || 'Chat';
+        document.getElementById('chat-title').textContent = title;
+        if (!chats[activeChatId]) chats[activeChatId] = [];
+        renderChat(activeChatId);
+        if (showGreeting && chats[activeChatId].length === 0) appendMessage('ai', 'Hello — ask me about ingested documents or type a question to start!');
+      }
+
+      // events
+      convsEl.addEventListener('click', e => {
+        const conv = e.target.closest('.conv'); if (!conv) return; setActiveConversationElement(conv, false);
+      });
+      newChatBtn.addEventListener('click', () => {
+        const id = String(chatCounter++); const name = `Chat ${convsEl.children.length + 1}`;
+        const div = document.createElement('div'); div.className = 'conv'; div.dataset.id = id; div.innerHTML = `<div class="title">${name}</div>`;
+        convsEl.prepend(div); chats[id] = []; enableRename(div); setActiveConversationElement(div, true);
+      });
+
+      // prompt handling
+      let isComposing = false;
+      promptEl.addEventListener('compositionstart', () => isComposing = true);
+      promptEl.addEventListener('compositionend', () => setTimeout(() => isComposing = false, 0));
+      promptEl.addEventListener('keydown', (e) => {
+        if (isComposing) return;
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendQuery(); }
+      });
+      sendBtn.addEventListener('click', sendQuery);
+
+      // demo sendQuery: posts /query and renders response; shows typing indicator
+      async function sendQuery() {
+        const text = promptEl.value.trim(); if (!text) return;
+        appendMessage('user', text); promptEl.value = '';
+        showTyping();
+        try {
+          const resp = await fetch('/query', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: text, top_k: 3 }) });
+          const data = await resp.json().catch(() => null);
+          hideTyping();
+          if (resp.ok) appendMessage('ai', data?.answer || '(no answer)');
+          else appendMessage('ai', data?.detail || resp.statusText || 'Error');
+        } catch (err) {
+          hideTyping();
+          appendMessage('ai', 'Network Error');
+          console.error(err);
+        }
+      }
+
+      // typing indicator
+      function showTyping() {
+        if (document.getElementById('__typing')) return;
+        const t = document.createElement('div'); t.className = 'msg ai'; t.id = '__typing';
+        const av = document.createElement('div'); av.className = 'avatar';
+        // emoji for AI typing
+        av.textContent = '🤖';
+        const inner = document.createElement('div'); inner.innerHTML = `<div class="bubble"><div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
+        t.appendChild(av); t.appendChild(inner); messagesEl.appendChild(t); messagesEl.scrollTop = messagesEl.scrollHeight; updateCustomScrollbar();
+      }
+      function hideTyping() { const t = document.getElementById('__typing'); if (t) t.remove(); updateCustomScrollbar(); }
+
+      // ingest modal wiring (basic)
+      openIngest.addEventListener('click', () => { modalBg.style.display = 'flex'; });
+      closeIngest.addEventListener('click', () => { modalBg.style.display = 'none'; });
+      dropzone.addEventListener('click', () => fileInput.click());
+      dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('hover'); });
+      dropzone.addEventListener('dragleave', () => dropzone.classList.remove('hover'));
+      dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('hover');
+        const dt = e.dataTransfer;
+        if (dt && dt.files && dt.files.length) {
+          selectedFiles = Array.from(dt.files);
+          selectedName.textContent = selectedFiles.length === 1 ? selectedFiles[0].name : `${selectedFiles.length} files selected`;
+          fileMeta.style.display = 'flex';
+          // show combined size
+          const totalKB = Math.round(selectedFiles.reduce((s, f) => s + f.size, 0) / 1024);
+          fileSizeEl.textContent = `${totalKB} KB`;
+        }
+      });
+
+      // file input selection
+      fileInput.addEventListener('change', (e) => {
+        if (fileInput.files && fileInput.files.length) {
+          selectedFiles = Array.from(fileInput.files);
+          selectedName.textContent = selectedFiles.length === 1 ? selectedFiles[0].name : `${selectedFiles.length} files selected`;
+          fileMeta.style.display = 'flex';
+          const totalKB = Math.round(selectedFiles.reduce((s, f) => s + f.size, 0) / 1024);
+          fileSizeEl.textContent = `${totalKB} KB`;
+        }
+      });
+
+      // Upload handler uses selectedFile or fileInput
+      startUpload.addEventListener('click', async () => {
+        const filesToSend = (selectedFiles && selectedFiles.length) ? selectedFiles : (fileInput.files ? Array.from(fileInput.files) : []);
+        if (!filesToSend || filesToSend.length === 0) {
+          uploadResult.textContent = 'Please select one or more files first.';
+          return;
+        }
+        uploadResult.innerHTML = `<span class="spinner"></span> Uploading ${filesToSend.length} file(s)...`;
+        try {
+          const fd = new FormData();
+          for (const f of filesToSend) {
+            // multiple entries with same field name -> FastAPI receives List[UploadFile]
+            fd.append('files', f, f.name);
+          }
+          const resp = await fetch('/ingest', { method: 'POST', body: fd });
+          const data = await resp.json();
+          if (resp.ok) {
+            uploadResult.innerHTML = '✅ Uploaded — index will update shortly';
+            // clear selected files after successful upload
+            selectedFiles = [];
+            fileInput.value = '';
+            selectedName.textContent = 'No file';
+            fileMeta.style.display = 'none';
+            // refresh docs count
+            fetch('/status').then(r => r.json()).then(d => { docsCountEl.textContent = d.docs_count || 0; });
+          } else {
+            uploadResult.innerHTML = `<span style="color:#ffb4b4">Error: ${data.detail || data?.message || 'Unknown'}</span>`;
+          }
+        } catch (err) {
+          uploadResult.innerHTML = `<span style="color:#ffb4b4">Network Error</span>`;
+          console.error('Ingest upload error', err);
+        }
+      });
+
+      // custom scrollbar: allow clicking track to jump (optional)
+      customScrollbar.addEventListener('click', (e) => {
+        // do nothing — pointer-events none on track to avoid intercepting clicks; kept for future extension
+      });
+
+      // mutation observer to update scrollbar on DOM changes
+      const mo = new MutationObserver(() => requestAnimationFrame(updateCustomScrollbar));
+      mo.observe(messagesEl, { childList: true, subtree: true });
+
+      // initial state
+      if (!convsEl.querySelector('.conv')) createInitialChat();
+      else { const first = convsEl.querySelector('.conv'); if (!first.dataset.id) { first.dataset.id = String(chatCounter++); chats[first.dataset.id] = []; enableRename(first); } setActiveConversationElement(convsEl.querySelector('.conv'), true); }
+      updateCustomScrollbar();
+    });
+  </script>
+</body>
+
+</html>

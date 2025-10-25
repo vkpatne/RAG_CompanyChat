@@ -1,0 +1,13 @@
+How to Reset Password:
+1. Go to the login screen.
+2. Click 'Forgot Password'.
+3. Enter your registered email.
+4. Follow the reset link sent to your email.
+
+How to Track Orders:
+1. Navigate to 'My Orders'.
+2. Click on the order you wish to track.
+3. View the current status and shipment details.
+
+Refund Policy:
+Refunds are processed within 7 working days once approved. Contact support if delayed.

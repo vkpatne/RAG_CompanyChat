@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+sentence-transformers
+langchain
+huggingface-hub
+faiss-cpu
+pydantic
+python-multipart
+tf-keras
+llama-cpp-python
+pypdf

@@ -1,0 +1,35 @@
+### Company Overview
+PayMate is a digital payment company providing solutions for merchants, consumers, and financial
+institutions. It enables UPI, card, and wallet transactions. The company also provides merchant
+analytics and fraud detection using AI models.
+
+---
+
+### Transaction Flow
+When a customer initiates a payment using UPI or a linked card, the request is validated by the
+payment gateway. The gateway then communicates with the issuing bank through NPCI or Visa/Mastercard
+networks. Once authorized, the payment is settled and confirmed to both merchant and user.
+
+---
+
+### Security Policies
+The company complies with PCI DSS standards, ensures end-to-end encryption, and uses tokenization
+for sensitive data. Regular audits and vulnerability scans are conducted to maintain compliance and
+security posture.
+
+---
+
+### Fraud Detection
+AI-driven fraud detection models monitor transaction patterns, geolocation, and device data. Any
+anomalies trigger alerts or automatic holds. Machine learning algorithms continuously improve
+detection accuracy.
+
+---
+
+### Api Documentation
+Developers can integrate the payment API by registering on the developer portal. API endpoints
+include /initiatePayment, /verifyTransaction, and /refund. Responses are returned in JSON with
+authentication via API keys and HMAC signatures.
+
+---
+
