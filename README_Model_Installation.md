@@ -1,3 +1,8 @@
+########################FOR GOOGLE COLAB ########################
+run colab_installation.ipynb 
+
+
+########################FOR WINDOWS##############################
 Step 1: Install prerequisites
 
 1. Python 3.10+

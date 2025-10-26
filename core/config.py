@@ -5,11 +5,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Model IDs (public)
-DEFAULT_EMBED_MODEL = os.getenv("EMBED_MODEL_ID", "intfloat/e5-base-v2")
+DEFAULT_EMBED_MODEL = os.getenv("EMBED_MODEL_ID")
 
 # Local directories where models will be stored/loaded from
-EMBED_LOCAL_DIR = os.getenv("EMBED_LOCAL_DIR", "C://models//e5_base_v2//")
-LLM_LOCAL = os.getenv("LLM_LOCAL","C://models//mistral-7b-instruct-v0.1K_M.gguf")
+EMBED_LOCAL_DIR = os.getenv("EMBED_LOCAL_DIR")
+LLM_LOCAL = os.getenv("LLM_LOCAL")
 
 # Index and docs
 INDEX_PATH = os.getenv("INDEX_PATH", "./db/faiss_index.bin")
