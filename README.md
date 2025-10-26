@@ -18,3 +18,11 @@ pip install -r requirements.txt
 
 #### 2. How to run
 uvicorn main:app --reload
+
+
+#### if running on windows create .env file at root level.
+.env
+EMBED_MODEL_ID="intfloat/e5-base-v2"
+EMBED_LOCAL_DIR="C://models//e5_base_v2//"
+LLM_LOCAL="C://models//tinyllma//tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
+FORCE_OFFLINE=True
