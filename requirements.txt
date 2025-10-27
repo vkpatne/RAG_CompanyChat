@@ -9,3 +9,4 @@ python-multipart
 tf-keras
 llama-cpp-python
 pypdf
+langchain_community
