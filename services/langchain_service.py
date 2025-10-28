@@ -1,5 +1,4 @@
 import os
-from langchain.chains import RetrievalQA
 from core.logger import logger
 from core.errors import RetrievalError, GenerationError
 
@@ -7,6 +6,10 @@ from services.llm_manager import LLMManager
 from services.faiss_manager import FAISSManager
 from services.reranker import rerank_documents
 from services.retriever_wrapper import RerankRetriever
+
+from langchain_core.runnables import RunnablePassthrough
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 
 class LangChainService:
 	def __init__(self):
@@ -44,11 +47,20 @@ class LangChainService:
 
 		# wrap and run RetrievalQA
 		retriever = RerankRetriever(ranked_docs)
-		qa_chain = RetrievalQA.from_chain_type(
-			llm=self.llm_manager.llm,
-			chain_type="stuff",
-			retriever=retriever,
-			return_source_documents=True
+  
+		# ---- Build prompt ----
+		prompt = ChatPromptTemplate.from_template(
+			"Answer the question using the following context:\n{context}\n\nQuestion: {question}"
 		)
-		result = qa_chain.invoke({"query": question})
+
+		# ---- Create the pipeline ----
+		retrieval_chain = (
+			{"context": retriever, "question": RunnablePassthrough()}
+			| prompt
+			| self.llm_manager.llm
+			| StrOutputParser()
+		)
+
+		# ---- Run it ----
+		result = retrieval_chain.invoke(question)
 		return result

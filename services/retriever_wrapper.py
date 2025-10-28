@@ -1,4 +1,4 @@
-from langchain.schema import BaseRetriever
+from langchain_core.retrievers import BaseRetriever
 
 class RerankRetriever(BaseRetriever):
 	# Provide common BaseRetriever attributes so LangChain accessors don't fail
